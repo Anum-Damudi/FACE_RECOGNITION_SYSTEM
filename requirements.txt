@@ -1,0 +1,7 @@
+streamlit
+opencv-python
+face-recognition
+numpy
+pillow
+scikit-learn
+pandas
