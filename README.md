@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # AI Face Recognition Security System (Demo)
 
 This demo project implements an image-upload-based AI face recognition security workflow with:
@@ -62,3 +63,6 @@ streamlit run app.py
 - Replace SQLite with MongoDB/MySQL
 - Add check-in logs and alert history table
 - Add threshold tuning controls in sidebar
+=======
+# FACE_RECOGNITION_SYSTEM
+>>>>>>> 087dbfc312de52f7b55072cffb5904f0d536a0fe
