@@ -1,8 +1,15 @@
+from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple
 
 import cv2
 import face_recognition
 import numpy as np
+
+# More jitters = stabler 128-d vectors (slower). Helps cross-photo matching.
+NUM_JITTERS = 7
+
+# Upscale tiny LFW crops before CNN/HOG so landmarks are usable.
+GALLERY_MIN_SIDE = 320
 
 
 def decode_uploaded_image(file_bytes: bytes) -> np.ndarray:
@@ -14,34 +21,97 @@ def decode_uploaded_image(file_bytes: bytes) -> np.ndarray:
     return rgb_image
 
 
+def upscale_if_tiny(rgb: np.ndarray, min_side: int = GALLERY_MIN_SIDE) -> np.ndarray:
+    h, w = rgb.shape[:2]
+    m = min(h, w)
+    if m >= min_side:
+        return rgb
+    scale = min_side / m
+    return cv2.resize(
+        rgb,
+        (int(round(w * scale)), int(round(h * scale))),
+        interpolation=cv2.INTER_CUBIC,
+    )
+
+
+def face_locations_robust(rgb: np.ndarray, use_cnn: bool) -> List[Tuple[int, int, int, int]]:
+    """CNN when requested, then HOG with stronger upsampling."""
+    if use_cnn:
+        locs = face_recognition.face_locations(rgb, number_of_times_to_upsample=1, model="cnn")
+        if locs:
+            return locs
+    for ups in (2, 1):
+        locs = face_recognition.face_locations(rgb, number_of_times_to_upsample=ups, model="hog")
+        if locs:
+            return locs
+    return []
+
+
+def encode_single_face_rgb(rgb: np.ndarray, use_cnn: bool) -> Optional[np.ndarray]:
+    """One face per image (gallery / tight crop). Same encoder settings as live detection."""
+    rgb = upscale_if_tiny(rgb)
+    h, w = rgb.shape[:2]
+    locs = face_locations_robust(rgb, use_cnn=use_cnn)
+    if not locs:
+        locs = [(0, w, h, 0)]
+    encs = face_recognition.face_encodings(rgb, locs, num_jitters=NUM_JITTERS)
+    return encs[0] if encs else None
+
+
 def detect_faces_and_encodings(
     rgb_image: np.ndarray,
+    use_cnn: bool = True,
 ) -> Tuple[List[Tuple[int, int, int, int]], List[np.ndarray]]:
-    face_locations = face_recognition.face_locations(rgb_image, model="hog")
-    face_encodings = face_recognition.face_encodings(rgb_image, face_locations)
-    return face_locations, face_encodings
+    locs = face_locations_robust(rgb_image, use_cnn=use_cnn)
+    encs = face_recognition.face_encodings(rgb_image, locs, num_jitters=NUM_JITTERS)
+    return locs, encs
+
+
+def _best_match_row(
+    query_encoding: np.ndarray,
+    known_users: List[Dict[str, Any]],
+) -> Tuple[Optional[Dict[str, Any]], float]:
+    """Pick identity by minimum distance among all rows for that name, then best identity."""
+    if not known_users:
+        return None, 1.0
+
+    by_name: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for u in known_users:
+        by_name[u["name"]].append(u)
+
+    best_row: Optional[Dict[str, Any]] = None
+    best_dist = float("inf")
+
+    for rows in by_name.values():
+        encodings = [np.array(r["face_encoding"], dtype=np.float64) for r in rows]
+        distances = face_recognition.face_distance(encodings, query_encoding)
+        idx = int(np.argmin(distances))
+        d = float(distances[idx])
+        if d < best_dist:
+            best_dist = d
+            best_row = rows[idx]
+
+    return best_row, best_dist
+
+
+def best_match(
+    query_encoding: np.ndarray,
+    known_users: List[Dict[str, Any]],
+) -> Tuple[Optional[Dict[str, Any]], float]:
+    return _best_match_row(query_encoding, known_users)
 
 
 def match_face(
     query_encoding: np.ndarray,
     known_users: List[Dict[str, Any]],
-    tolerance: float = 0.48,
+    tolerance: float = 0.65,
 ) -> Tuple[Optional[Dict[str, Any]], float]:
-    if not known_users:
-        return None, 1.0
-
-    known_encodings = [np.array(user["face_encoding"], dtype=np.float64) for user in known_users]
-    distances = face_recognition.face_distance(known_encodings, query_encoding)
-
-    if len(distances) == 0:
-        return None, 1.0
-
-    best_idx = int(np.argmin(distances))
-    best_distance = float(distances[best_idx])
-
-    if best_distance <= tolerance:
-        return known_users[best_idx], best_distance
-    return None, best_distance
+    candidate, distance = _best_match_row(query_encoding, known_users)
+    if candidate is None:
+        return None, distance
+    if distance <= tolerance:
+        return candidate, distance
+    return None, distance
 
 
 def draw_results(

@@ -1,0 +1,9 @@
+---
+pid: 32460
+cwd: |
+  C:\Users\anumd
+---
+PS C:\Users\anumd>
+ *  History restored 
+
+PS C:\Users\anumd>

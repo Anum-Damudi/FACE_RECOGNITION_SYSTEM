@@ -1,6 +1,7 @@
 streamlit
 opencv-python
 face-recognition
+setuptools>=70,<81
 numpy
 pillow
 scikit-learn

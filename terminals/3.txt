@@ -1,0 +1,6 @@
+---
+pid: 4004
+cwd: |
+  C:\Users\anumd
+---
+PS C:\Users\anumd>

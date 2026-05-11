@@ -4,6 +4,7 @@ import streamlit as st
 
 from db import get_all_users, init_db
 from face_engine import (
+    best_match,
     decode_uploaded_image,
     detect_faces_and_encodings,
     draw_results,
@@ -26,9 +27,32 @@ st.caption(
 
 with st.sidebar:
     st.header("System Status")
+    if st.button("Reload registered faces"):
+        load_known_users.clear()
+        st.rerun()
     known_users = load_known_users()
     st.metric("Registered Faces", len(known_users))
-    st.info("Run `python seed_dataset.py` once to populate demo data from an online dataset (LFW).")
+    use_cnn = st.checkbox(
+        "CNN face detector (recommended)",
+        value=True,
+        help="More accurate than HOG; slower on CPU. Turn off for speed.",
+    )
+    match_tolerance = st.slider(
+        "Match tolerance (higher = accept more as a match)",
+        min_value=0.45,
+        max_value=0.75,
+        value=0.65,
+        step=0.01,
+        help="With multi-sample gallery, 0.63–0.68 usually works. Raise if same person stays Unknown.",
+    )
+    st.info(
+        "Rebuild gallery with: `python seed_dataset.py` (clears DB by default; several encodings per person). "
+        "Then upload a **different photo** of someone listed under sample names."
+    )
+    if known_users:
+        sample_names = sorted({u["name"] for u in known_users})
+        with st.expander("Sample names in your database"):
+            st.caption(", ".join(sample_names[:25]) + (" …" if len(sample_names) > 25 else ""))
 
 uploaded_file = st.file_uploader(
     "Upload image (jpg/jpeg/png)",
@@ -51,7 +75,7 @@ except ValueError as exc:
     st.error(str(exc))
     st.stop()
 
-face_locations, face_encodings = detect_faces_and_encodings(rgb_image)
+face_locations, face_encodings = detect_faces_and_encodings(rgb_image, use_cnn=use_cnn)
 
 if not face_locations:
     st.error("No face detected in the uploaded image.")
@@ -59,16 +83,18 @@ if not face_locations:
 
 labels: List[str] = []
 recognized_people: List[Dict[str, Any]] = []
-unknown_count = 0
+unknown_hints: List[Dict[str, Any]] = []
 
 for encoding in face_encodings:
-    matched_user, distance = match_face(encoding, known_users)
+    matched_user, distance = match_face(encoding, known_users, tolerance=match_tolerance)
     if matched_user:
         labels.append(f"{matched_user['name']} ({distance:.2f})")
         recognized_people.append({**matched_user, "distance": distance})
     else:
-        labels.append("Unknown Person")
-        unknown_count += 1
+        closest, closest_d = best_match(encoding, known_users)
+        labels.append(f"Unknown (best {closest_d:.2f})" if closest else "Unknown")
+        if closest:
+            unknown_hints.append({**closest, "distance": closest_d})
 
 result_img = draw_results(rgb_image, face_locations, labels)
 
@@ -88,11 +114,21 @@ with right:
                 st.write(f"**Age:** {person['age']}")
                 st.write(f"**Occupation:** {person['occupation']}")
                 st.write(f"**ID / Status:** {person['status']}")
-                st.caption(f"Face distance score: {person['distance']:.3f} (lower is better)")
+                st.caption(f"Face distance score: {person['distance']:.3f} (lower is better; ≤ {match_tolerance:.2f} counts as match)")
 
-    if unknown_count > 0:
-        st.error(f"ALERT: {unknown_count} unknown face(s) detected!")
-        st.warning("Unknown Person")
+    if unknown_hints:
+        st.error("No confident match for at least one face (above tolerance).")
+        for person in unknown_hints:
+            with st.container(border=True):
+                st.warning(f"Closest in database: **{person['name']}**")
+                st.write(f"**Name:** {person['name']}")
+                st.write(f"**Age:** {person['age']}")
+                st.write(f"**Occupation:** {person['occupation']}")
+                st.write(f"**ID / Status:** {person['status']}")
+                st.caption(
+                    f"Distance **{person['distance']:.3f}** is above your tolerance **{match_tolerance:.2f}**. "
+                    "Raise the slider slightly, use a clearer frontal photo, or pick someone from the name list in the sidebar."
+                )
 
 st.divider()
 st.write("Tip: For best results, use clear frontal face images with good lighting.")

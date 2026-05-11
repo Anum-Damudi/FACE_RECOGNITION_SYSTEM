@@ -1,16 +1,21 @@
 import json
-import face_recognition
 import sqlite3
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-DB_PATH = Path("face_security.db")
+DB_PATH = Path(__file__).resolve().parent / "face_security.db"
 
 
 def get_connection() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def clear_all_users() -> None:
+    with get_connection() as conn:
+        conn.execute("DELETE FROM users")
+        conn.commit()
 
 
 def init_db() -> None:
