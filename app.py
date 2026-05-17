@@ -1,5 +1,6 @@
 from typing import Any, Dict, List
 
+from camera import run_live_camera
 import streamlit as st
 
 from db import get_all_users, init_db
@@ -58,6 +59,11 @@ uploaded_file = st.file_uploader(
     "Upload image (jpg/jpeg/png)",
     type=["jpg", "jpeg", "png"],
 )
+
+camera_clicked = st.button("📷 Open Live Camera")
+
+if camera_clicked:
+    run_live_camera()
 
 if uploaded_file is None:
     st.warning("Upload an image to start recognition.")
