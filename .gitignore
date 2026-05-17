@@ -1,3 +1,13 @@
 .venv/
 __pycache__/
 *.pyc
+__pycache__
+.pyc
+.env
+venv
+__pycache__/
+*.pyc
+terminals/
+.env
+venv/
+terminals/
