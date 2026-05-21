@@ -1,0 +1,6 @@
+# One person name per line. Lines starting with # are ignored.
+# After editing, run:  python prepare_dataset.py init
+
+RIONA
+MARISSHA
+NAGASHREE
