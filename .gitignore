@@ -1,0 +1,12 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.env
+logs/*.jpg
+logs/*.png
+*.log
+.idea/
+.vscode/
+.pytest_cache/
+.History/

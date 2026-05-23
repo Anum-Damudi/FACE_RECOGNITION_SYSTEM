@@ -1,0 +1,16 @@
+# Criminal Database & High Alert Module — Python AI Surveillance
+# Python 3.9+ recommended
+
+flask>=3.0.0
+opencv-python>=4.8.0
+numpy>=1.24.0
+
+# Face embeddings & verification (includes TensorFlow backend)
+deepface>=0.0.89
+
+# Database — use one or both as needed
+pymongo>=4.6.0
+python-dotenv>=1.0.0
+
+# Optional: desktop notifications (install for cross-platform popups)
+plyer>=2.1.0
