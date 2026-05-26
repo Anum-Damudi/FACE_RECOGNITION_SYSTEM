@@ -1,7 +1,9 @@
+import base64
 from typing import Any, Dict, List
 
-from camera import run_live_camera
-import streamlit as st
+import cv2
+import numpy as np
+from flask import Flask, redirect, render_template, request, session, url_for
 
 from db import get_all_users, init_db
 from face_engine import (
@@ -12,129 +14,208 @@ from face_engine import (
     match_face,
 )
 
-st.set_page_config(page_title="AI Face Security Demo", page_icon="🛡️", layout="wide")
+app = Flask(__name__)
+app.secret_key = "sentinel_neural_core"
+
+USER_CREDENTIALS = {
+    "admin": "password123"
+}
+
+DEFAULT_RECOGNITION_TOLERANCE = 0.55
 
 
-@st.cache_resource(show_spinner=False)
 def load_known_users() -> List[Dict[str, Any]]:
     init_db()
     return get_all_users()
 
 
-st.title("AI Face Recognition Security System (Demo)")
-st.caption(
-    "Flow: Image Upload -> Face Detection -> Face Recognition -> Database Match -> Details / Unknown Alert"
-)
+def image_to_data_url(image: Any) -> str:
+    success, buffer = cv2.imencode(".png", cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+    if not success:
+        raise RuntimeError("Unable to encode result image.")
+    return base64.b64encode(buffer.tobytes()).decode("ascii")
 
-with st.sidebar:
-    st.header("System Status")
-    if st.button("Reload registered faces"):
-        load_known_users.clear()
-        st.rerun()
+
+@app.route("/")
+def home():
+    if session.get("user"):
+        return redirect(url_for("dashboard"))
+    return redirect(url_for("login"))
+
+
+@app.route("/login", methods=["GET", "POST"])
+@app.route("/login.html", methods=["GET", "POST"])
+def login():
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+        if username in USER_CREDENTIALS and USER_CREDENTIALS[username] == password:
+            session["user"] = username
+            return redirect(url_for("dashboard"))
+        error = "ACCESS DENIED"
+    return render_template("login.html", error=error)
+
+
+@app.route("/dashboard")
+@app.route("/dashboard.html")
+def dashboard():
+    if "user" not in session:
+        return redirect(url_for("login"))
+    return render_template("dashboard.html")
+
+
+@app.route("/recognition", methods=["GET", "POST"])
+def recognition():
+    if "user" not in session:
+        return redirect(url_for("login"))
+
     known_users = load_known_users()
-    st.metric("Registered Faces", len(known_users))
-    use_cnn = st.checkbox(
-        "CNN face detector (recommended)",
-        value=True,
-        help="More accurate than HOG; slower on CPU. Turn off for speed.",
-    )
-    match_tolerance = st.slider(
-        "Match tolerance (higher = accept more as a match)",
-        min_value=0.45,
-        max_value=0.75,
-        value=0.65,
-        step=0.01,
-        help="With multi-sample gallery, 0.63–0.68 usually works. Raise if same person stays Unknown.",
-    )
-    st.info(
-        "Rebuild gallery with: `python seed_dataset.py` (clears DB by default; several encodings per person). "
-        "Then upload a **different photo** of someone listed under sample names."
-    )
-    if known_users:
-        sample_names = sorted({u["name"] for u in known_users})
-        with st.expander("Sample names in your database"):
-            st.caption(", ".join(sample_names[:25]) + (" …" if len(sample_names) > 25 else ""))
+    registered_count = len(known_users)
+    sample_names = sorted({u["name"] for u in known_users}) if known_users else []
 
-uploaded_file = st.file_uploader(
-    "Upload image (jpg/jpeg/png)",
-    type=["jpg", "jpeg", "png"],
-)
+    error = None
+    result_image = None
+    recognized_people: List[Dict[str, Any]] = []
+    unknown_hints: List[Dict[str, Any]] = []
+    use_cnn = True
+    tolerance = DEFAULT_RECOGNITION_TOLERANCE
 
-camera_clicked = st.button("📷 Open Live Camera")
+    if request.method == "POST":
+        uploaded_file = request.files.get("image_file")
+        use_cnn = request.form.get("use_cnn") == "on"
+        try:
+            tolerance = float(request.form.get("tolerance", tolerance))
+        except ValueError:
+            tolerance = DEFAULT_RECOGNITION_TOLERANCE
 
-if camera_clicked:
-    run_live_camera()
-
-if uploaded_file is None:
-    st.warning("Upload an image to start recognition.")
-    st.stop()
-
-if len(known_users) == 0:
-    st.error("Database is empty. Please run `python seed_dataset.py` first.")
-    st.stop()
-
-file_bytes = uploaded_file.read()
-
-try:
-    rgb_image = decode_uploaded_image(file_bytes)
-except ValueError as exc:
-    st.error(str(exc))
-    st.stop()
-
-face_locations, face_encodings = detect_faces_and_encodings(rgb_image, use_cnn=use_cnn)
-
-if not face_locations:
-    st.error("No face detected in the uploaded image.")
-    st.stop()
-
-labels: List[str] = []
-recognized_people: List[Dict[str, Any]] = []
-unknown_hints: List[Dict[str, Any]] = []
-
-for encoding in face_encodings:
-    matched_user, distance = match_face(encoding, known_users, tolerance=match_tolerance)
-    if matched_user:
-        labels.append(f"{matched_user['name']} ({distance:.2f})")
-        recognized_people.append({**matched_user, "distance": distance})
-    else:
-        closest, closest_d = best_match(encoding, known_users)
-        labels.append(f"Unknown (best {closest_d:.2f})" if closest else "Unknown")
-        if closest:
-            unknown_hints.append({**closest, "distance": closest_d})
-
-result_img = draw_results(rgb_image, face_locations, labels)
-
-left, right = st.columns([1.2, 1])
-
-with left:
-    st.subheader("Processed Image")
-    st.image(result_img, use_container_width=True)
-
-with right:
-    st.subheader("Recognition Output")
-    if recognized_people:
-        for person in recognized_people:
-            with st.container(border=True):
-                st.success(f"Match Found: {person['name']}")
-                st.write(f"**Name:** {person['name']}")
-                st.write(f"**Age:** {person['age']}")
-                st.write(f"**Occupation:** {person['occupation']}")
-                st.write(f"**ID / Status:** {person['status']}")
-                st.caption(f"Face distance score: {person['distance']:.3f} (lower is better; ≤ {match_tolerance:.2f} counts as match)")
-
-    if unknown_hints:
-        st.error("No confident match for at least one face (above tolerance).")
-        for person in unknown_hints:
-            with st.container(border=True):
-                st.warning(f"Closest in database: **{person['name']}**")
-                st.write(f"**Name:** {person['name']}")
-                st.write(f"**Age:** {person['age']}")
-                st.write(f"**Occupation:** {person['occupation']}")
-                st.write(f"**ID / Status:** {person['status']}")
-                st.caption(
-                    f"Distance **{person['distance']:.3f}** is above your tolerance **{match_tolerance:.2f}**. "
-                    "Raise the slider slightly, use a clearer frontal photo, or pick someone from the name list in the sidebar."
+        if not uploaded_file or uploaded_file.filename == "":
+            error = "Please upload a JPEG or PNG image."
+        elif registered_count == 0:
+            error = "Database is empty. Please run `python seed_dataset.py` first."
+        else:
+            try:
+                file_bytes = uploaded_file.read()
+                rgb_image = decode_uploaded_image(file_bytes)
+                face_locations, face_encodings = detect_faces_and_encodings(
+                    rgb_image,
+                    use_cnn=use_cnn,
                 )
+                if not face_locations:
+                    error = "No face detected in the uploaded image."
+                else:
+                    labels: List[str] = []
+                    for encoding in face_encodings:
+                        matched_user, distance = match_face(
+                            encoding,
+                            known_users,
+                            tolerance=tolerance,
+                        )
+                        if matched_user:
+                            labels.append(f"{matched_user['name']} ({distance:.2f})")
+                            recognized_people.append({**matched_user, "distance": distance})
+                        else:
+                            closest, closest_d = best_match(encoding, known_users)
+                            labels.append(
+                                f"Unknown (best {closest_d:.2f})" if closest else "Unknown"
+                            )
+                            if closest:
+                                unknown_hints.append({**closest, "distance": closest_d})
 
-st.divider()
-st.write("Tip: For best results, use clear frontal face images with good lighting.")
+                    result_image = image_to_data_url(
+                        draw_results(rgb_image, face_locations, labels)
+                    )
+            except ValueError as exc:
+                error = str(exc)
+            except Exception as exc:
+                error = f"Unable to process image: {exc}"
+
+    return render_template(
+        "recognition.html",
+        registered_count=registered_count,
+        sample_names=sample_names,
+        error=error,
+        result_image=result_image,
+        recognized_people=recognized_people,
+        unknown_hints=unknown_hints,
+        use_cnn=use_cnn,
+        tolerance=tolerance,
+    )
+
+
+@app.route('/api/scan', methods=['POST'])
+def api_scan():
+    if 'user' not in session:
+        return {'error': 'Unauthorized'}, 401
+
+    if 'frame' not in request.files:
+        return {'error': 'Missing frame'}, 400
+
+    frame_file = request.files['frame']
+    image_bytes = frame_file.read()
+    nparr = np.frombuffer(image_bytes, np.uint8)
+    image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    if image is None:
+        return {'error': 'Unable to decode image'}, 400
+
+    rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    face_locations, face_encodings = detect_faces_and_encodings(rgb_image, use_cnn=False)
+    if not face_locations:
+        return {'state': 'idle'}
+
+    face_location = face_locations[0]
+    face_encoding = face_encodings[0]
+    known_users = load_known_users()
+    matched_user, distance = match_face(
+        face_encoding,
+        known_users,
+        tolerance=DEFAULT_RECOGNITION_TOLERANCE,
+    )
+
+    if matched_user:
+        status_text = str(matched_user.get('status', '')).lower()
+        if any(word in status_text for word in ('criminal', 'wanted', 'threat')):
+            state = 'criminal'
+        else:
+            state = 'known'
+    else:
+        state = 'unknown'
+
+    response = {
+        'state': state,
+        'face': {
+            'top': int(face_location[0]),
+            'right': int(face_location[1]),
+            'bottom': int(face_location[2]),
+            'left': int(face_location[3]),
+        },
+        'distance': float(distance),
+    }
+
+    if not matched_user:
+        closest, closest_distance = best_match(face_encoding, known_users)
+        if closest:
+            response['closest_name'] = closest['name']
+            response['closest_distance'] = float(closest_distance)
+
+    if matched_user:
+        response.update(
+            {
+                'name': matched_user.get('name', 'Unknown'),
+                'age': matched_user.get('age', 'N/A'),
+                'occupation': matched_user.get('occupation', 'N/A'),
+                'status': matched_user.get('status', 'Verified'),
+            }
+        )
+
+    return response
+
+
+@app.route("/logout")
+def logout():
+    session.pop("user", None)
+    return redirect(url_for("login"))
+
+
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=5000)

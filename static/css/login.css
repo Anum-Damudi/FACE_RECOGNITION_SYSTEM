@@ -1,0 +1,265 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    overflow: hidden;
+    height: 100vh;
+    background:
+        radial-gradient(circle at top, rgba(0,255,255,0.12), transparent 40%),
+        radial-gradient(circle at bottom, rgba(0,255,120,0.08), transparent 30%),
+        #05070b;
+
+    font-family: 'Orbitron', sans-serif;
+    color: #d7ffff;
+}
+
+.scanlines {
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+        to bottom,
+        rgba(255,255,255,0.02),
+        rgba(255,255,255,0.02) 1px,
+        transparent 1px,
+        transparent 3px
+    );
+    pointer-events: none;
+    animation: flicker 0.15s infinite;
+}
+
+.noise {
+    position: fixed;
+    inset: 0;
+    background-image:
+        radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 4px 4px;
+    opacity: 0.08;
+}
+
+.radar {
+    position: absolute;
+    width: 1200px;
+    height: 1200px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,255,255,0.08);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.radar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(
+        transparent,
+        rgba(0,255,255,0.25),
+        transparent
+    );
+    animation: rotate 6s linear infinite;
+}
+
+.top-status-bar {
+    position: absolute;
+    top: 20px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    gap: 60px;
+    letter-spacing: 3px;
+    font-size: 12px;
+    color: #00ffe1;
+    text-shadow: 0 0 10px #00ffe1;
+}
+
+.login-screen {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    z-index: 10;
+}
+
+.logo-area {
+    text-align: center;
+    margin-bottom: 50px;
+}
+
+.shield-icon {
+    width: 140px;
+    height: 140px;
+    border: 2px solid #00fff2;
+    margin: auto;
+    transform: rotate(45deg);
+    box-shadow: 0 0 30px #00fff2;
+    position: relative;
+    animation: pulse 3s infinite;
+}
+
+.shield-core {
+    position: absolute;
+    inset: 25px;
+    background: rgba(0,255,255,0.15);
+    border: 2px solid #00fff2;
+}
+
+.logo-area h1 {
+    margin-top: 40px;
+    font-size: 64px;
+    letter-spacing: 12px;
+    color: #00ffe1;
+    text-shadow: 0 0 25px #00fff2;
+}
+
+.logo-area p {
+    margin-top: 10px;
+    letter-spacing: 4px;
+    font-size: 14px;
+    color: #8ff;
+}
+
+.login-panel {
+    width: 420px;
+    position: relative;
+    padding: 45px;
+    background: rgba(0,0,0,0.35);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(0,255,255,0.2);
+    box-shadow:
+        0 0 20px rgba(0,255,255,0.2),
+        inset 0 0 20px rgba(0,255,255,0.05);
+}
+
+.corner {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    border-color: #00fff2;
+    border-style: solid;
+}
+
+.tl {
+    top: -2px;
+    left: -2px;
+    border-width: 3px 0 0 3px;
+}
+
+.tr {
+    top: -2px;
+    right: -2px;
+    border-width: 3px 3px 0 0;
+}
+
+.bl {
+    bottom: -2px;
+    left: -2px;
+    border-width: 0 0 3px 3px;
+}
+
+.br {
+    bottom: -2px;
+    right: -2px;
+    border-width: 0 3px 3px 0;
+}
+
+.input-group {
+    position: relative;
+    margin-bottom: 25px;
+}
+
+.input-icon {
+    position: absolute;
+    top: 16px;
+    left: 15px;
+    color: #00fff2;
+    z-index: 2;
+}
+
+input {
+    width: 100%;
+    padding: 16px 16px 16px 45px;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(0,255,255,0.4);
+    color: #d9ffff;
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 2px;
+    outline: none;
+    transition: 0.3s;
+}
+
+input:focus {
+    box-shadow: 0 0 20px rgba(0,255,255,0.5);
+}
+
+input::placeholder {
+    color: #66dede;
+}
+
+.auth-btn {
+    position: relative;
+    width: 100%;
+    padding: 16px;
+    overflow: hidden;
+    border: none;
+    background: linear-gradient(90deg, #00fff2, #00ff99);
+    color: #041114;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: bold;
+    letter-spacing: 4px;
+    cursor: pointer;
+    transition: 0.4s;
+    box-shadow: 0 0 25px rgba(0,255,255,0.4);
+}
+
+.auth-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 35px rgba(0,255,255,0.7);
+}
+
+.shine {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 60%;
+    height: 100%;
+    background: rgba(255,255,255,0.35);
+    transform: skewX(-20deg);
+    animation: shine 3s infinite;
+}
+
+.error-box {
+    margin-bottom: 20px;
+    color: #ff4f4f;
+    text-shadow: 0 0 10px red;
+}
+
+@keyframes shine {
+    0% { left: -100%; }
+    100% { left: 150%; }
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+    0%,100% {
+        box-shadow: 0 0 20px #00fff2;
+    }
+    50% {
+        box-shadow: 0 0 50px #00fff2;
+    }
+}
+
+@keyframes flicker {
+    0% { opacity: 0.95; }
+    50% { opacity: 1; }
+    100% { opacity: 0.97; }
+}

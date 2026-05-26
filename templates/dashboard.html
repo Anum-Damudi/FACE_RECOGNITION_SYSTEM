@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SENTINEL AI SURVEILLANCE</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/dashboard.css') }}">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap"
+          rel="stylesheet">
+</head>
+
+<body>
+
+<div class="scanlines"></div>
+<div class="grid-overlay"></div>
+<div class="noise"></div>
+
+<header class="topbar">
+
+    <div class="system-item">
+        <span class="dot"></span>
+        SYSTEM ONLINE
+    </div>
+
+    <div class="system-item">
+        <span class="dot"></span>
+        AI CORE ACTIVE
+    </div>
+
+    <div class="system-item warning">
+        THREAT LEVEL GREEN
+    </div>
+
+    <div class="system-item">
+        CAMERA ACTIVE
+    </div>
+
+    <div class="system-item">
+        DATABASE CONNECTED
+    </div>
+
+    <div class="system-item" id="clock">
+        00:00:00
+    </div>
+
+</header>
+
+<div class="dashboard">
+
+    <main class="camera-panel">
+
+        <div class="panel-corners tl"></div>
+        <div class="panel-corners tr"></div>
+        <div class="panel-corners bl"></div>
+        <div class="panel-corners br"></div>
+
+        <div class="camera-header">
+            LIVE FACIAL RECOGNITION FEED
+        </div>
+
+        <div class="camera-wrapper">
+
+            <video id="webcam"
+                   autoplay
+                   playsinline
+                   muted></video>
+
+            <canvas id="overlay"></canvas>
+
+            <div class="scan-beam"></div>
+
+            <div class="hud-overlay"></div>
+
+            <div class="radar"></div>
+
+            <div class="target-box known">
+                <div class="label green">
+                    KNOWN PERSON DETECTED
+                    <small>Name: Alex Mercer</small>
+                    <small>Age: 29</small>
+                </div>
+            </div>
+
+            <div class="target-box unknown">
+                <div class="label yellow">
+                    UNKNOWN PERSON DETECTED
+                </div>
+            </div>
+
+            <div class="target-box criminal">
+                <div class="label red">
+                    CRIMINAL DETECTED
+                    <small>THREAT LEVEL HIGH</small>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <aside class="right-panel">
+
+        <div class="panel">
+
+            <h3>AI PROCESSING</h3>
+
+            <div class="metric">
+                <span>Recognition Confidence</span>
+                <div class="bar">
+                    <div class="fill"></div>
+                </div>
+            </div>
+
+            <div class="metric">
+                <span>Threat Analysis</span>
+                <div class="bar">
+                    <div class="fill delay1"></div>
+                </div>
+            </div>
+
+            <div class="metric">
+                <span>Neural Activity</span>
+                <div class="bar">
+                    <div class="fill delay2"></div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="panel">
+
+            <h3>DETECTION LOGS</h3>
+
+            <div class="logs">
+                <p>[SCAN] Face detected...</p>
+                <p>[AI] Matching biometric profile...</p>
+                <p>[OK] Database synchronized...</p>
+                <p>[SYS] Neural engine online...</p>
+                <p>[TRACK] Monitoring target...</p>
+            </div>
+
+        </div>
+
+    </aside>
+
+</div>
+
+<footer class="console">
+
+    <div class="console-line">
+        SCANNING FACE...
+    </div>
+
+    <div class="console-line">
+        MATCH FOUND
+    </div>
+
+    <div class="console-line">
+        THREAT ANALYSIS RUNNING
+    </div>
+
+    <div class="console-line">
+        DATABASE MATCH SUCCESSFUL
+    </div>
+
+</footer>
+
+<script src="/static/js/dashboard.js"></script>
+
+</body>
+</html>

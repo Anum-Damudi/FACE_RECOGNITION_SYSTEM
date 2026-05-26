@@ -1,16 +1,12 @@
-<<<<<<< HEAD
-# AI Face Recognition Security System (Demo)
+# AI Face Recognition Security System (Merged with Sentinel AI)
 
-This demo project implements an image-upload-based AI face recognition security workflow with:
+This repository now combines the original face recognition demo with the Sentinel AI web console.
 
-- Python + Streamlit frontend
-- OpenCV + `face_recognition` for face detection and recognition
-- SQLite database for storing/retrieving user profile data + face embeddings
-- Online dataset bootstrap using LFW (Labeled Faces in the Wild)
-
-## Program Flow
-
-Image Upload -> Face Detection -> Face Recognition -> Database Matching -> Display User Information / Unknown Alert
+Features:
+- Flask-based security portal with login
+- Image upload face recognition workflow
+- SQLite user gallery and face encoding database
+- Sentinel-inspired dashboard UI with registration count and result summaries
 
 ## 1) Setup
 
@@ -24,45 +20,44 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## 2) Build Demo Face Database (Online Dataset)
+## 2) Build or seed the face database
 
 ```bash
 python seed_dataset.py
 ```
 
-This downloads the LFW dataset from the internet and stores face encodings and profile details in `face_security.db`.
+If you already have a face database, you can skip this step. The database is stored in `face_security.db`.
 
-## 3) Run Streamlit App
+## 3) Run the merged Flask app
 
 ```bash
-streamlit run app.py
+python app.py
 ```
 
-## 4) Use the App
+Then open `http://127.0.0.1:5000` in your browser.
+
+The original Sentinel dashboard is still available at `/dashboard` after login.
+The face recognition upload page is available at `/recognition` after login.
+
+## 4) Login
+
+Use the built-in demo credentials:
+- Username: `admin`
+- Password: `password123`
+
+## 5) Use the app
 
 1. Upload a face image (`jpg/jpeg/png`)
-2. App detects face(s)
-3. Compares against stored face embeddings
-4. If matched, shows:
-   - Name
-   - Age
-   - Occupation
-   - ID/Status
-5. If not matched, shows Unknown Person + alert banner
+2. Select whether to use the CNN detector
+3. Adjust tolerance if needed
+4. View match results or unknown hints
 
 ## Files
 
-- `app.py` - Streamlit UI and app flow
-- `face_engine.py` - image decode, face detect/encode, matching logic
+- `app.py` - merged Flask app and recognition flow
+- `face_engine.py` - image decode, detection, encoding, matching, and drawing
 - `db.py` - SQLite database layer
-- `seed_dataset.py` - online dataset ingestion and DB seeding
-
-## Future Demo Upgrades
-
-- Add webcam/CCTV live stream mode with OpenCV
-- Replace SQLite with MongoDB/MySQL
-- Add check-in logs and alert history table
-- Add threshold tuning controls in sidebar
-=======
-# FACE_RECOGNITION_SYSTEM
->>>>>>> 087dbfc312de52f7b55072cffb5904f0d536a0fe
+- `camera.py` - fallback live camera helper
+- `seed_dataset.py` - dataset ingestion and DB seeding
+- `templates/` - login and dashboard UI templates
+- `static/` - Sentinel UI CSS and JS assets
