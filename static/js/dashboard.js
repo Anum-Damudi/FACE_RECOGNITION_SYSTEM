@@ -1,42 +1,76 @@
 const video = document.getElementById('webcam');
+
 const overlay = document.getElementById('overlay');
+
+const uploadedImage = document.getElementById('uploadedImage');
+
+const uploadedVideo = document.getElementById('uploadedVideo');
+
+const imageUpload = document.getElementById('imageUpload');
+
+const videoUpload = document.getElementById('videoUpload');
+
+const imageBtn = document.getElementById('imageBtn');
+
+const videoBtn = document.getElementById('videoBtn');
+
+const liveBtn = document.getElementById('liveBtn');
 
 const cameraWrapper = document.querySelector('.camera-wrapper');
 
 const knownBox = document.querySelector('.known');
+
 const unknownBox = document.querySelector('.unknown');
+
 const criminalBox = document.querySelector('.criminal');
 
 const hiddenCanvas = document.createElement('canvas');
+
 const hiddenCtx = hiddenCanvas.getContext('2d');
 
 const ctx = overlay.getContext('2d');
 
 let processing = false;
+
 let faceDetected = false;
+
 let currentState = 'idle';
+
 let lastFaceLocation = null;
+
+let liveStream = null;
+
+let currentSource = video;
 
 function resizeOverlay(){
 
-    overlay.width = video.clientWidth;
-    overlay.height = video.clientHeight;
+    overlay.width = currentSource.clientWidth;
 
-    if(video.videoWidth && video.videoHeight){
+    overlay.height = currentSource.clientHeight;
 
-        hiddenCanvas.width = video.videoWidth;
-        hiddenCanvas.height = video.videoHeight;
+    if(currentSource.videoWidth){
+
+        hiddenCanvas.width = currentSource.videoWidth;
+
+        hiddenCanvas.height = currentSource.videoHeight;
+    }
+
+    if(currentSource.naturalWidth){
+
+        hiddenCanvas.width = currentSource.naturalWidth;
+
+        hiddenCanvas.height = currentSource.naturalHeight;
     }
 }
-
-video.addEventListener('loadedmetadata',resizeOverlay);
 
 window.addEventListener('resize',resizeOverlay);
 
 function hideBoxes(){
 
     knownBox.style.display = 'none';
+
     unknownBox.style.display = 'none';
+
     criminalBox.style.display = 'none';
 }
 
@@ -65,143 +99,160 @@ function drawFaceFrame(face,state='scan'){
     if(!face){
 
         clearOverlay();
+
         return;
     }
 
     const scaleX = overlay.width / hiddenCanvas.width;
+
     const scaleY = overlay.height / hiddenCanvas.height;
 
     const x = face.left * scaleX;
+
     const y = face.top * scaleY;
 
     const w = (face.right - face.left) * scaleX;
+
     const h = (face.bottom - face.top) * scaleY;
 
-    const pad = 35;
+    const pad = 25;
 
     const bx = x - pad;
+
     const by = y - pad;
 
     const bw = w + pad * 2;
+
     const bh = h + pad * 2;
 
     clearOverlay();
 
-    let primary = '#00fff2';
-    let glow = 'rgba(0,255,255,0.8)';
-
-    if(state === 'known'){
-
-        primary = '#00ff88';
-        glow = 'rgba(0,255,136,0.8)';
-    }
+    let color = '#00ff88';
 
     if(state === 'unknown'){
 
-        primary = '#ffd000';
-        glow = 'rgba(255,208,0,0.8)';
+        color = '#ffd000';
     }
 
     if(state === 'criminal'){
 
-        primary = '#ff2f2f';
-        glow = 'rgba(255,47,47,0.8)';
+        color = '#ff2f2f';
     }
 
     ctx.save();
 
-    // outer glow
+    ctx.shadowColor = color;
 
-    ctx.strokeStyle = primary;
+    ctx.shadowBlur = 18;
+
+    ctx.strokeStyle = color;
+
+    ctx.lineWidth = 4;
+
+    const corner = 40;
+
+    ctx.beginPath();
+
+    ctx.moveTo(bx,by+corner);
+    ctx.lineTo(bx,by);
+    ctx.lineTo(bx+corner,by);
+
+    ctx.moveTo(bx+bw-corner,by);
+    ctx.lineTo(bx+bw,by);
+    ctx.lineTo(bx+bw,by+corner);
+
+    ctx.moveTo(bx,by+bh-corner);
+    ctx.lineTo(bx,by+bh);
+    ctx.lineTo(bx+corner,by+bh);
+
+    ctx.moveTo(bx+bw-corner,by+bh);
+    ctx.lineTo(bx+bw,by+bh);
+    ctx.lineTo(bx+bw,by+bh-corner);
+
+    ctx.stroke();
+
+    ctx.beginPath();
+
+    ctx.moveTo(bx-35,by+bh/2);
+    ctx.lineTo(bx+20,by+bh/2);
+
+    ctx.moveTo(bx+bw-20,by+bh/2);
+    ctx.lineTo(bx+bw+35,by+bh/2);
+
+    ctx.stroke();
+
+    const lineY = by + ((Date.now()/4) % bh);
+
+    const gradient = ctx.createLinearGradient(
+        bx,
+        lineY,
+        bx+bw,
+        lineY
+    );
+
+    gradient.addColorStop(0,'transparent');
+
+    gradient.addColorStop(0.5,color);
+
+    gradient.addColorStop(1,'transparent');
+
+    ctx.beginPath();
+
+    ctx.strokeStyle = gradient;
+
     ctx.lineWidth = 3;
 
-    ctx.shadowColor = glow;
-    ctx.shadowBlur = 25;
+    ctx.moveTo(bx,lineY);
 
-    ctx.strokeRect(bx,by,bw,bh);
-
-    // corners
-
-    const c = 45;
-
-    ctx.beginPath();
-
-    ctx.moveTo(bx,by+c);
-    ctx.lineTo(bx,by);
-    ctx.lineTo(bx+c,by);
-
-    ctx.moveTo(bx+bw-c,by);
-    ctx.lineTo(bx+bw,by);
-    ctx.lineTo(bx+bw,by+c);
-
-    ctx.moveTo(bx,by+bh-c);
-    ctx.lineTo(bx,by+bh);
-    ctx.lineTo(bx+c,by+bh);
-
-    ctx.moveTo(bx+bw-c,by+bh);
-    ctx.lineTo(bx+bw,by+bh);
-    ctx.lineTo(bx+bw,by+bh-c);
+    ctx.lineTo(bx+bw,lineY);
 
     ctx.stroke();
 
-    // animated scan line
-
-    const time = Date.now() / 8;
-
-    const lineY = by + (time % bh);
-
     ctx.beginPath();
 
-    ctx.strokeStyle = glow;
-    ctx.lineWidth = 2;
+    ctx.arc(
+        bx + bw/2,
+        by + bh/2,
+        7,
+        0,
+        Math.PI*2
+    );
 
-    ctx.moveTo(bx + 5,lineY);
-    ctx.lineTo(bx + bw - 5,lineY);
+    ctx.fillStyle = color;
 
-    ctx.stroke();
-
-    // center target
-
-    const cx = bx + bw / 2;
-    const cy = by + bh / 2;
-
-    ctx.beginPath();
-
-    ctx.arc(cx,cy,8,0,Math.PI * 2);
-
-    ctx.stroke();
-
-    // crosshair
-
-    ctx.beginPath();
-
-    ctx.moveTo(cx - 20,cy);
-    ctx.lineTo(cx + 20,cy);
-
-    ctx.moveTo(cx,cy - 20);
-    ctx.lineTo(cx,cy + 20);
-
-    ctx.stroke();
-
-    // grid
+    ctx.fill();
 
     ctx.lineWidth = 1;
 
-    ctx.strokeStyle = 'rgba(0,255,255,0.18)';
+    ctx.strokeStyle = color + '55';
 
     for(let i=1;i<4;i++){
 
         ctx.beginPath();
 
-        ctx.moveTo(bx + (bw/4)*i,by);
-        ctx.lineTo(bx + (bw/4)*i,by + bh);
+        ctx.moveTo(
+            bx + (bw/4)*i,
+            by
+        );
+
+        ctx.lineTo(
+            bx + (bw/4)*i,
+            by+bh
+        );
 
         ctx.stroke();
 
         ctx.beginPath();
 
-        ctx.moveTo(bx,by + (bh/4)*i);
-        ctx.lineTo(bx + bw,by + (bh/4)*i);
+        ctx.moveTo(
+            bx,
+            by + (bh/4)*i
+        );
+
+        ctx.lineTo(
+            bx+bw,
+            by + (bh/4)*i
+        );
 
         ctx.stroke();
     }
@@ -254,35 +305,51 @@ function updateStatus(type,data={}){
 
 async function getFrameBlob(){
 
-    if(!video.videoWidth || !video.videoHeight){
+    if(currentSource){
 
-        return null;
+        if(currentSource.tagName === 'IMG'){
+
+            hiddenCanvas.width = currentSource.naturalWidth;
+
+            hiddenCanvas.height = currentSource.naturalHeight;
+        }
+
+        else{
+
+            if(!currentSource.videoWidth){
+
+                return null;
+            }
+
+            hiddenCanvas.width = currentSource.videoWidth;
+
+            hiddenCanvas.height = currentSource.videoHeight;
+        }
+
+        hiddenCtx.drawImage(
+            currentSource,
+            0,
+            0,
+            hiddenCanvas.width,
+            hiddenCanvas.height
+        );
+
+        return new Promise((resolve)=>{
+
+            hiddenCanvas.toBlob((blob)=>{
+
+                resolve(blob);
+
+            },'image/jpeg',0.95);
+        });
     }
 
-    hiddenCanvas.width = video.videoWidth;
-    hiddenCanvas.height = video.videoHeight;
-
-    hiddenCtx.drawImage(
-        video,
-        0,
-        0,
-        hiddenCanvas.width,
-        hiddenCanvas.height
-    );
-
-    return new Promise((resolve)=>{
-
-        hiddenCanvas.toBlob((blob)=>{
-
-            resolve(blob);
-
-        },'image/jpeg',0.8);
-    });
+    return null;
 }
 
 async function scanCycle(){
 
-    if(processing || !video.videoWidth){
+    if(processing){
 
         return;
     }
@@ -294,6 +361,7 @@ async function scanCycle(){
     if(!blob){
 
         processing = false;
+
         return;
     }
 
@@ -306,7 +374,9 @@ async function scanCycle(){
         const response = await fetch('/api/scan',{
 
             method:'POST',
+
             body:form,
+
             credentials:'same-origin'
         });
 
@@ -317,6 +387,7 @@ async function scanCycle(){
         if(!result || result.state === 'idle'){
 
             setIdleState();
+
             return;
         }
 
@@ -359,11 +430,29 @@ function updateClock(){
     clock.innerText = now.toLocaleTimeString();
 }
 
+function stopCamera(){
+
+    if(liveStream){
+
+        liveStream.getTracks().forEach(track=>{
+
+            track.stop();
+
+        });
+
+        liveStream = null;
+    }
+
+    video.srcObject = null;
+}
+
 async function startCamera(){
+
+    stopCamera();
 
     try{
 
-        const stream = await navigator.mediaDevices.getUserMedia({
+        liveStream = await navigator.mediaDevices.getUserMedia({
 
             video:{
                 width:{ideal:1280},
@@ -374,9 +463,19 @@ async function startCamera(){
             audio:false
         });
 
-        video.srcObject = stream;
+        video.style.display = 'block';
+
+        uploadedImage.style.display = 'none';
+
+        uploadedVideo.style.display = 'none';
+
+        video.srcObject = liveStream;
+
+        currentSource = video;
 
         await video.play();
+
+        resizeOverlay();
     }
 
     catch(error){
@@ -386,6 +485,83 @@ async function startCamera(){
         setIdleState();
     }
 }
+
+imageBtn.addEventListener('click',()=>{
+
+    imageUpload.click();
+});
+
+videoBtn.addEventListener('click',()=>{
+
+    videoUpload.click();
+});
+
+liveBtn.addEventListener('click',()=>{
+
+    startCamera();
+});
+
+imageUpload.addEventListener('change',(e)=>{
+
+    const file = e.target.files[0];
+
+    if(!file){
+
+        return;
+    }
+
+    stopCamera();
+
+    const url = URL.createObjectURL(file);
+
+    uploadedImage.src = url;
+
+    uploadedImage.style.display = 'block';
+
+    uploadedVideo.style.display = 'none';
+
+    video.style.display = 'none';
+
+    currentSource = uploadedImage;
+
+    uploadedImage.onload = ()=>{
+
+        resizeOverlay();
+
+        scanCycle();
+    };
+});
+
+videoUpload.addEventListener('change',(e)=>{
+
+    const file = e.target.files[0];
+
+    if(!file){
+
+        return;
+    }
+
+    stopCamera();
+
+    const url = URL.createObjectURL(file);
+
+    uploadedVideo.src = url;
+
+    uploadedVideo.style.display = 'block';
+
+    uploadedImage.style.display = 'none';
+
+    video.style.display = 'none';
+
+    currentSource = uploadedVideo;
+
+    uploadedVideo.onloadedmetadata = ()=>{
+
+        uploadedVideo.play();
+
+        resizeOverlay();
+    };
+});
 
 function animationLoop(){
 
@@ -401,7 +577,7 @@ startCamera();
 
 animationLoop();
 
-setInterval(scanCycle,500);
+setInterval(scanCycle,700);
 
 setInterval(updateClock,1000);
 

@@ -38,10 +38,6 @@
     </div>
 
     <div class="system-item">
-        CAMERA ACTIVE
-    </div>
-
-    <div class="system-item">
         DATABASE CONNECTED
     </div>
 
@@ -64,12 +60,46 @@
             LIVE FACIAL RECOGNITION FEED
         </div>
 
+        <div class="upload-controls">
+
+            <button class="mode-btn active" id="liveBtn">
+                LIVE CAMERA
+            </button>
+
+            <button class="mode-btn" id="imageBtn">
+                UPLOAD IMAGE
+            </button>
+
+            <button class="mode-btn" id="videoBtn">
+                UPLOAD VIDEO
+            </button>
+
+            <input type="file"
+                   id="imageUpload"
+                   accept="image/png,image/jpeg"
+                   hidden>
+
+            <input type="file"
+                   id="videoUpload"
+                   accept="video/mp4,video/avi,video/mov"
+                   hidden>
+
+        </div>
+
         <div class="camera-wrapper">
 
             <video id="webcam"
                    autoplay
                    playsinline
                    muted></video>
+
+            <video id="uploadedVideo"
+                   playsinline
+                   muted
+                   style="display:none;"></video>
+
+            <img id="uploadedImage"
+                 style="display:none;" />
 
             <canvas id="overlay"></canvas>
 
@@ -80,24 +110,15 @@
             <div class="radar"></div>
 
             <div class="target-box known">
-                <div class="label green">
-                    KNOWN PERSON DETECTED
-                    <small>Name: Alex Mercer</small>
-                    <small>Age: 29</small>
-                </div>
+                <div class="label green"></div>
             </div>
 
             <div class="target-box unknown">
-                <div class="label yellow">
-                    UNKNOWN PERSON DETECTED
-                </div>
+                <div class="label yellow"></div>
             </div>
 
             <div class="target-box criminal">
-                <div class="label red">
-                    CRIMINAL DETECTED
-                    <small>THREAT LEVEL HIGH</small>
-                </div>
+                <div class="label red"></div>
             </div>
 
         </div>
